@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/coinbase/rosetta-sdk-go/asserter"
 	"github.com/coinbase/rosetta-sdk-go/server"
@@ -17,7 +18,7 @@ import (
 
 // NewBlockchainRouter creates a blockchain specific router
 // that will handle common routes specified inside the rosetta API specification
-func NewBlockchainRouter(cfg *configuration.Config, client client.DigibyteClient) http.Handler {
+func NewBlockchainRouter(cfg *configuration.Config, client client.DigibyteClient, blockRepo *repository.BlockRepository) http.Handler {
 	assert, err := asserter.NewServer([]*types.NetworkIdentifier{
 		{
 			Blockchain:           cfg.NetworkIdentifier.Blockchain,
@@ -31,12 +32,23 @@ func NewBlockchainRouter(cfg *configuration.Config, client client.DigibyteClient
 		os.Exit(1)
 	}
 
-	rclient := provider.CreateRedisDB(cfg, provider.BlockDB)
-	blockRepo := repository.NewBlockRepository(rclient)
-
 	networkAPIController := server.NewNetworkAPIController(services.NewNetworkAPIService(client), assert)
 	blockAPIController := server.NewBlockAPIController(services.NewBlockAPIService(client, blockRepo), assert)
 	return server.NewRouter(networkAPIController, blockAPIController)
+}
+
+func startRouterCapabilities(wg *sync.WaitGroup, cfg *configuration.Config, router http.Handler) {
+	fmt.Println("Listening on ", "0.0.0.0:"+cfg.Server.Port)
+	err := http.ListenAndServe("0.0.0.0:"+cfg.Server.Port, router)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Digibyte Rosetta Gateway server exited suddenly: %v\n", err)
+		wg.Done()
+		os.Exit(1)
+	}
+}
+
+func startSyncingCapabilities(blockRepo repository.BlockRepository, client client.DigibyteClient) {
+	// blockRepo.StoreBlock()
 }
 
 func main() {
@@ -51,12 +63,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	rclient := provider.CreateRedisDB(cfg, provider.BlockDB)
+	blockRepo := repository.NewBlockRepository(rclient)
+
 	client := client.NewDigibyteClient(cfg)
-	router := NewBlockchainRouter(cfg, client)
-	fmt.Println("Listening on ", "0.0.0.0:"+cfg.Server.Port)
-	err = http.ListenAndServe("0.0.0.0:"+cfg.Server.Port, router)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Digibyte Rosetta Gateway server exited suddenly: %v\n", err)
-		os.Exit(1)
-	}
+	router := NewBlockchainRouter(cfg, client, blockRepo)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go startRouterCapabilities(&wg, cfg, router)
+
+	wg.Wait()
 }

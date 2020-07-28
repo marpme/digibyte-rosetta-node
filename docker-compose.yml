@@ -1,0 +1,12 @@
+version: "3.2"
+services:
+  redis:
+    image: "redis"
+    command: redis-server --requirepass sOmE_sEcUrE_pAsS
+    ports:
+      - "6379:6379"
+    volumes:
+      - $PWD/data:/var/lib/redis
+      - $PWD/data/conf:/usr/local/etc/redis/
+    environment:
+      - REDIS_REPLICATION_MODE=master

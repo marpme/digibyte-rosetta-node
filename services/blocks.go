@@ -10,6 +10,7 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/marpme/digibyte-rosetta-node/client"
 	"github.com/marpme/digibyte-rosetta-node/repository"
+	"github.com/marpme/digibyte-rosetta-node/utils"
 )
 
 // BlockAPIService client based implementation of the block servicer
@@ -25,17 +26,6 @@ func NewBlockAPIService(client client.DigibyteClient, blockRepository *repositor
 		client:          client,
 		blockRepository: blockRepository,
 	}
-}
-
-func mapTransactions(txs []string) []*types.TransactionIdentifier {
-	var transactionsIdentifiers []*types.TransactionIdentifier
-	for i := 0; i < len(txs); i++ {
-		transactionsIdentifiers = append(transactionsIdentifiers, &types.TransactionIdentifier{
-			Hash: txs[i],
-		})
-	}
-
-	return transactionsIdentifiers
 }
 
 func (blockService *blockAPIService) retriveBlock(ctx context.Context, blockRequest *types.BlockRequest) (*btcjson.GetBlockVerboseResult, *btcjson.GetBlockVerboseResult, *types.Error) {
@@ -80,24 +70,13 @@ func (blockService *blockAPIService) Block(ctx context.Context, blockRequest *ty
 	blockResponse, dbErr := blockService.blockRepository.GetBlock(*blockRequest.BlockIdentifier.Hash)
 
 	if blockResponse == nil || dbErr != nil {
-		block, prevBlock, err := blockService.retriveBlock(ctx, blockRequest)
+		block, _, err := blockService.retriveBlock(ctx, blockRequest)
 
 		if err != nil {
 			return nil, err
 		}
 
-		blockResponse = &types.BlockResponse{
-			Block: &types.Block{
-				BlockIdentifier: &types.BlockIdentifier{
-					Hash: block.Hash,
-				},
-				ParentBlockIdentifier: &types.BlockIdentifier{
-					Hash: prevBlock.Hash,
-				},
-				Timestamp: block.Time,
-			},
-			OtherTransactions: mapTransactions(block.Tx),
-		}
+		blockResponse = utils.MapBlock(block)
 
 		blockService.blockRepository.StoreBlock(block.Hash, blockResponse)
 
