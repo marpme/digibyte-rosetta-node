@@ -40,6 +40,12 @@ type (
 		Password   string `yaml:"password"`
 	}
 
+	// Redis specifies the connection details towards a given node
+	Redis struct {
+		Addr     string `yaml:"address"`
+		Password string `yaml:"password"`
+	}
+
 	// Version is representing the version of the specification
 	// for both rosetta and the given node
 	Version struct {
@@ -54,6 +60,7 @@ type (
 		Server            Server            `yaml:"server"`
 		Node              Node              `yaml:"node"`
 		Version           Version           `yaml:"version"`
+		Redis             Redis             `yaml:"redis"`
 	}
 )
 

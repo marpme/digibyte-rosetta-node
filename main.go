@@ -17,11 +17,11 @@ import (
 
 // NewBlockchainRouter creates a blockchain specific router
 // that will handle common routes specified inside the rosetta API specification
-func NewBlockchainRouter(client client.DigibyteClient) http.Handler {
+func NewBlockchainRouter(cfg *configuration.Config, client client.DigibyteClient) http.Handler {
 	assert, err := asserter.NewServer([]*types.NetworkIdentifier{
 		{
-			Blockchain:           client.GetConfig().NetworkIdentifier.Blockchain,
-			Network:              client.GetConfig().NetworkIdentifier.Network,
+			Blockchain:           cfg.NetworkIdentifier.Blockchain,
+			Network:              cfg.NetworkIdentifier.Network,
 			SubNetworkIdentifier: nil,
 		},
 	})
@@ -31,7 +31,7 @@ func NewBlockchainRouter(client client.DigibyteClient) http.Handler {
 		os.Exit(1)
 	}
 
-	rclient := provider.CreateRedisDB()
+	rclient := provider.CreateRedisDB(cfg, provider.BlockDB)
 	blockRepo := repository.NewBlockRepository(rclient)
 
 	networkAPIController := server.NewNetworkAPIController(services.NewNetworkAPIService(client), assert)
@@ -52,7 +52,7 @@ func main() {
 	}
 
 	client := client.NewDigibyteClient(cfg)
-	router := NewBlockchainRouter(client)
+	router := NewBlockchainRouter(cfg, client)
 	fmt.Println("Listening on ", "0.0.0.0:"+cfg.Server.Port)
 	err = http.ListenAndServe("0.0.0.0:"+cfg.Server.Port, router)
 	if err != nil {
