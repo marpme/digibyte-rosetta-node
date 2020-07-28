@@ -1,25 +1,48 @@
 package repository
 
 import (
-	"context"
+	"fmt"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
-	"github.com/marpme/digibyte-rosetta-node/dependency"
-	"github.com/marpme/digibyte-rosetta-node/provider"
+	"github.com/go-redis/redis"
+	"github.com/marpme/digibyte-rosetta-node/utils"
 )
 
-type BlockProvider struct {
-	badgerDb *provider.BadgerDB
+type BlockRepository struct {
+	rdb *redis.Client
 }
 
-func initializeDatabase(ctx context.Context) (*BlockProvider, error) {
-	badgerdb, _ := dependency.InitBadgerDb()
-	b := &BlockProvider{
-		badgerDb: badgerdb,
+func NewBlockRepository(rdb *redis.Client) *BlockRepository {
+	return &BlockRepository{
+		rdb: rdb,
 	}
-	return b, nil
 }
 
-func (b *BlockProvider) StoreBlock(keyHash string, block *types.BlockResponse) {
+func (b *BlockRepository) StoreBlock(keyHash string, block *types.BlockResponse) error {
 
+	encodedBlock, err := utils.EncodeBlockLikeStruct(block)
+	if err != nil {
+		panic(err)
+	}
+
+	err = b.rdb.Set(keyHash, encodedBlock, 0).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *BlockRepository) GetBlock(keyHash string) (*types.BlockResponse, error) {
+	val, err := b.rdb.Get(keyHash).Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't load block from db with hash %s", keyHash)
+	}
+
+	decodedBlock, err := utils.DecodeBlockLikeStruct(val)
+	if err != nil {
+		return nil, fmt.Errorf("wasn't able to decode loaded block from db with hash %s", keyHash)
+	}
+
+	return decodedBlock, nil
 }

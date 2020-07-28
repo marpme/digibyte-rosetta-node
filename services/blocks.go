@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/coinbase/rosetta-sdk-go/server"
@@ -15,13 +16,14 @@ import (
 type blockAPIService struct {
 	server.BlockAPIServicer
 	client          client.DigibyteClient
-	blockRepository repository.BlockProvider
+	blockRepository *repository.BlockRepository
 }
 
 // NewBlockAPIService creates a new block API service
-func NewBlockAPIService(client client.DigibyteClient) server.BlockAPIServicer {
+func NewBlockAPIService(client client.DigibyteClient, blockRepository *repository.BlockRepository) server.BlockAPIServicer {
 	return &blockAPIService{
-		client: client,
+		client:          client,
+		blockRepository: blockRepository,
 	}
 }
 
@@ -75,24 +77,35 @@ func (blockService *blockAPIService) retriveBlock(ctx context.Context, blockRequ
 
 // Block retrieves the block for a given candidate
 func (blockService *blockAPIService) Block(ctx context.Context, blockRequest *types.BlockRequest) (*types.BlockResponse, *types.Error) {
-	block, prevBlock, err := blockService.retriveBlock(ctx, blockRequest)
+	blockResponse, dbErr := blockService.blockRepository.GetBlock(*blockRequest.BlockIdentifier.Hash)
 
-	if err != nil {
-		return nil, err
+	if blockResponse == nil || dbErr != nil {
+		block, prevBlock, err := blockService.retriveBlock(ctx, blockRequest)
+
+		if err != nil {
+			return nil, err
+		}
+
+		blockResponse = &types.BlockResponse{
+			Block: &types.Block{
+				BlockIdentifier: &types.BlockIdentifier{
+					Hash: block.Hash,
+				},
+				ParentBlockIdentifier: &types.BlockIdentifier{
+					Hash: prevBlock.Hash,
+				},
+				Timestamp: block.Time,
+			},
+			OtherTransactions: mapTransactions(block.Tx),
+		}
+
+		blockService.blockRepository.StoreBlock(block.Hash, blockResponse)
+
+		return blockResponse, nil
 	}
 
-	return &types.BlockResponse{
-		Block: &types.Block{
-			BlockIdentifier: &types.BlockIdentifier{
-				Hash: block.Hash,
-			},
-			ParentBlockIdentifier: &types.BlockIdentifier{
-				Hash: prevBlock.Hash,
-			},
-			Timestamp: block.Time,
-		},
-		OtherTransactions: mapTransactions(block.Tx),
-	}, nil
+	log.Printf("Queried block from DB (hash: %s)\n", *blockRequest.BlockIdentifier.Hash)
+	return blockResponse, nil
 }
 
 // BlockTransaction retrieves the block with the given transactions included

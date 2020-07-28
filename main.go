@@ -10,6 +10,8 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/marpme/digibyte-rosetta-node/client"
 	"github.com/marpme/digibyte-rosetta-node/configuration"
+	"github.com/marpme/digibyte-rosetta-node/provider"
+	"github.com/marpme/digibyte-rosetta-node/repository"
 	"github.com/marpme/digibyte-rosetta-node/services"
 )
 
@@ -29,8 +31,11 @@ func NewBlockchainRouter(client client.DigibyteClient) http.Handler {
 		os.Exit(1)
 	}
 
+	rclient := provider.CreateRedisDB()
+	blockRepo := repository.NewBlockRepository(rclient)
+
 	networkAPIController := server.NewNetworkAPIController(services.NewNetworkAPIService(client), assert)
-	blockAPIController := server.NewBlockAPIController(services.NewBlockAPIService(client), assert)
+	blockAPIController := server.NewBlockAPIController(services.NewBlockAPIService(client, blockRepo), assert)
 	return server.NewRouter(networkAPIController, blockAPIController)
 }
 
