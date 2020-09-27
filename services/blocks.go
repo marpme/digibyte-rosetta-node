@@ -28,16 +28,16 @@ func NewBlockAPIService(client client.DigibyteClient, blockRepository *repositor
 	}
 }
 
-func (blockService *blockAPIService) retriveBlock(ctx context.Context, blockRequest *types.BlockRequest) (*btcjson.GetBlockVerboseResult, *btcjson.GetBlockVerboseResult, *types.Error) {
+func (blockService *blockAPIService) retriveBlock(ctx context.Context, blockRequest *types.BlockRequest) (*btcjson.GetBlockVerboseTxResult, *btcjson.GetBlockVerboseTxResult, *types.Error) {
 
-	var block, prevBlock *btcjson.GetBlockVerboseResult
+	var block, prevBlock *btcjson.GetBlockVerboseTxResult
 	var err error
 
 	if blockRequest.BlockIdentifier.Index != nil {
 		block, err = blockService.client.GetBlock(ctx, *blockRequest.BlockIdentifier.Index)
 
 		if *blockRequest.BlockIdentifier.Index == 0 {
-			prevBlock = &btcjson.GetBlockVerboseResult{
+			prevBlock = &btcjson.GetBlockVerboseTxResult{
 				Hash: "0x0",
 			}
 		} else {
@@ -55,7 +55,7 @@ func (blockService *blockAPIService) retriveBlock(ctx context.Context, blockRequ
 		if err != nil {
 			return nil, nil, ErrUnableToGetBlk
 		}
-		prevBlock, err = blockService.client.GetBlockByHash(ctx, block.Header.PrevBlock.String())
+		prevBlock, err = blockService.client.GetBlockByHash(ctx, block.PreviousHash)
 	}
 
 	if err != nil {

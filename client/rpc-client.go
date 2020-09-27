@@ -7,7 +7,6 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/marpme/digibyte-rosetta-node/configuration"
 )
 
@@ -80,17 +79,17 @@ func (rpcClient *DigibyteClientRPC) GetStatus(ctx context.Context) (*btcjson.Get
 }
 
 // GetBlock will return you the block specification for a given height
-func (rpcClient *DigibyteClientRPC) GetBlock(ctx context.Context, height int64) (*btcjson.GetBlockVerboseResult, error) {
+func (rpcClient *DigibyteClientRPC) GetBlock(ctx context.Context, height int64) (*btcjson.GetBlockVerboseTxResult, error) {
 	client := rpcClient.reconnect()
 	defer client.Shutdown()
 
 	result, err := client.GetBlockHash(height)
-	block, err := client.GetBlockVerbose(result)
+	block, err := client.GetBlockVerboseTx(result)
 	return block, err
 }
 
 // GetBlockByHash will return you the block specification for a given height
-func (rpcClient *DigibyteClientRPC) GetBlockByHash(ctx context.Context, hash string) (*btcjson.GetBlockVerboseResult, error) {
+func (rpcClient *DigibyteClientRPC) GetBlockByHash(ctx context.Context, hash string) (*btcjson.GetBlockVerboseTxResult, error) {
 	client := rpcClient.reconnect()
 	defer client.Shutdown()
 
@@ -99,7 +98,7 @@ func (rpcClient *DigibyteClientRPC) GetBlockByHash(ctx context.Context, hash str
 		return nil, err
 	}
 
-	block, err := client.GetBlockVerbose(blockHash)
+	block, err := client.GetBlockVerboseTx(blockHash)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +107,7 @@ func (rpcClient *DigibyteClientRPC) GetBlockByHash(ctx context.Context, hash str
 }
 
 // GetLatestBlock returns the latest Digibyte block.
-func (rpcClient *DigibyteClientRPC) GetLatestBlock(ctx context.Context) (*wire.MsgBlock, error) {
+func (rpcClient *DigibyteClientRPC) GetLatestBlock(ctx context.Context) (*btcjson.GetBlockVerboseTxResult, error) {
 	client := rpcClient.reconnect()
 	defer client.Shutdown()
 
@@ -117,7 +116,7 @@ func (rpcClient *DigibyteClientRPC) GetLatestBlock(ctx context.Context) (*wire.M
 		return nil, err
 	}
 
-	block, err := client.GetBlock(latestBlockHash)
+	block, err := client.GetBlockVerboseTx(latestBlockHash)
 	if err != nil {
 		return nil, err
 	}

@@ -5,18 +5,18 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 )
 
-func mapTransactions(txs []string) []*types.TransactionIdentifier {
+func mapTransactions(txs []btcjson.TxRawResult) []*types.TransactionIdentifier {
 	var transactionsIdentifiers []*types.TransactionIdentifier
-	for i := 0; i < len(txs); i++ {
+	for _, tx := range txs {
 		transactionsIdentifiers = append(transactionsIdentifiers, &types.TransactionIdentifier{
-			Hash: txs[i],
+			Hash: tx.Hash,
 		})
 	}
 
 	return transactionsIdentifiers
 }
 
-func MapBlock(block *btcjson.GetBlockVerboseResult) *types.BlockResponse {
+func MapBlock(block *btcjson.GetBlockVerboseTxResult) *types.BlockResponse {
 	return &types.BlockResponse{
 		Block: &types.Block{
 			BlockIdentifier: &types.BlockIdentifier{
@@ -31,7 +31,7 @@ func MapBlock(block *btcjson.GetBlockVerboseResult) *types.BlockResponse {
 	}
 }
 
-func MapBlockWithTransaction(block *btcjson.GetBlockVerboseResult) *types.BlockResponse {
+func MapBlockWithTransaction(block *btcjson.GetBlockVerboseTxResult) *types.BlockResponse {
 	return &types.BlockResponse{
 		Block: &types.Block{
 			BlockIdentifier: &types.BlockIdentifier{

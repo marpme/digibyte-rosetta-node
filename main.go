@@ -13,6 +13,7 @@ import (
 	"github.com/marpme/digibyte-rosetta-node/configuration"
 	"github.com/marpme/digibyte-rosetta-node/provider"
 	"github.com/marpme/digibyte-rosetta-node/repository"
+	"github.com/marpme/digibyte-rosetta-node/routines"
 	"github.com/marpme/digibyte-rosetta-node/services"
 )
 
@@ -37,20 +38,6 @@ func NewBlockchainRouter(cfg *configuration.Config, client client.DigibyteClient
 	return server.NewRouter(networkAPIController, blockAPIController)
 }
 
-func startRouterCapabilities(wg *sync.WaitGroup, cfg *configuration.Config, router http.Handler) {
-	fmt.Println("Listening on ", "0.0.0.0:"+cfg.Server.Port)
-	err := http.ListenAndServe("0.0.0.0:"+cfg.Server.Port, router)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Digibyte Rosetta Gateway server exited suddenly: %v\n", err)
-		wg.Done()
-		os.Exit(1)
-	}
-}
-
-func startSyncingCapabilities(blockRepo repository.BlockRepository, client client.DigibyteClient) {
-	// blockRepo.StoreBlock()
-}
-
 func main() {
 	configPath := os.Getenv(configuration.ConfigPath)
 	if configPath == "" {
@@ -64,14 +51,18 @@ func main() {
 	}
 
 	rclient := provider.CreateRedisDB(cfg, provider.BlockDB)
+	// rAccountClient := provider.CreateRedisDB(cfg, provider.AccountDB)
+
 	blockRepo := repository.NewBlockRepository(rclient)
+	// acccountRepo := repository.NewTxRepository(rAccountClient)
 
 	client := client.NewDigibyteClient(cfg)
 	router := NewBlockchainRouter(cfg, client, blockRepo)
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 
-	go startRouterCapabilities(&wg, cfg, router)
+	go routines.StartRouterCapabilities(&wg, cfg, router)
+	go routines.StartSyncingCapabilities(&wg, blockRepo, client)
 
 	wg.Wait()
 }

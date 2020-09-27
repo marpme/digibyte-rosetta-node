@@ -11,8 +11,8 @@ type DBType = int
 const (
 	// BlockDB identifies the database and it's usage for blocks only
 	BlockDB DBType = 0
-	// TxDB identifies the database and it's usage for transactions only
-	TxDB DBType = 1
+	// AccountDB identifies the database and it's usage for transactions only
+	AccountDB DBType = 1
 )
 
 // CreateRedisDB returns a connected redisdb.
